@@ -1,5 +1,11 @@
 const fs = require("fs");
 const path = require("path");
+const {
+  connectDatabase,
+  isDatabaseEnabled,
+  loadPersistedState,
+  savePersistedState
+} = require("./database");
 
 const DATA_FILE = path.join(__dirname, "../data/store.json");
 
@@ -277,6 +283,29 @@ let groups = cloneData(defaultGroups);
 let students = cloneData(defaultStudents);
 let tests = cloneData(defaultTests);
 let attempts = cloneData(defaultAttempts);
+let remoteSaveQueue = Promise.resolve();
+
+function getCurrentState() {
+  return {
+    teacher,
+    groups,
+    students,
+    tests,
+    attempts
+  };
+}
+
+function queueRemoteSave() {
+  if (!isDatabaseEnabled()) {
+    return;
+  }
+
+  remoteSaveQueue = remoteSaveQueue
+    .then(() => savePersistedState(getCurrentState()))
+    .catch((error) => {
+      console.error("MongoDB saqlashda xato:", error.message);
+    });
+}
 
 function hydrateState(payload) {
   groups = Array.isArray(payload?.groups) ? cloneData(payload.groups) : cloneData(defaultGroups);
@@ -305,6 +334,7 @@ function saveState() {
     ),
     "utf8"
   );
+  queueRemoteSave();
 }
 
 function loadState() {
@@ -328,6 +358,26 @@ function loadState() {
 }
 
 loadState();
+
+async function initializeDataStore() {
+  loadState();
+
+  try {
+    const connected = await connectDatabase();
+
+    if (!connected) {
+      return;
+    }
+
+    const remoteState = await loadPersistedState(getCurrentState());
+    hydrateState(remoteState);
+    saveState();
+    await remoteSaveQueue;
+    console.log("MongoDB Atlas ulandi");
+  } catch (error) {
+    console.error("MongoDB Atlas ulanmadi, local store ishlatiladi:", error.message);
+  }
+}
 
 function getNextId(items) {
   return items.reduce((maxId, item) => Math.max(maxId, item.id), 0) + 1;
@@ -985,6 +1035,7 @@ function createTest(payload) {
 
 module.exports = {
   teacher,
+  initializeDataStore,
   findGroup,
   findStudent,
   findTest,
