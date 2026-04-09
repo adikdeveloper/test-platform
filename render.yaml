@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: students-backend
+    env: node
+    rootDir: Backend
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: FRONTEND_URL
+        sync: false
