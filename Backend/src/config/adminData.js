@@ -371,8 +371,6 @@ async function initializeDataStore() {
 
     const remoteState = await loadPersistedState(getCurrentState());
     hydrateState(remoteState);
-    saveState();
-    await remoteSaveQueue;
     console.log("MongoDB Atlas ulandi");
   } catch (error) {
     console.error("MongoDB Atlas ulanmadi, local store ishlatiladi:", error.message);
