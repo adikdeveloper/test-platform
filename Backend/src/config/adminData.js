@@ -9,7 +9,7 @@ const {
 
 const DATA_FILE = path.join(__dirname, "../data/store.json");
 
-const teacher = {
+const defaultTeacher = {
   id: 1,
   name: "Aymurat",
   phone: "+998901234567",
@@ -283,6 +283,7 @@ let groups = cloneData(defaultGroups);
 let students = cloneData(defaultStudents);
 let tests = cloneData(defaultTests);
 let attempts = cloneData(defaultAttempts);
+let teacher = cloneData(defaultTeacher);
 let remoteSaveQueue = Promise.resolve();
 
 function getCurrentState() {
@@ -308,6 +309,13 @@ function queueRemoteSave() {
 }
 
 function hydrateState(payload) {
+  teacher =
+    payload?.teacher && typeof payload.teacher === "object"
+      ? {
+          ...cloneData(defaultTeacher),
+          ...cloneData(payload.teacher)
+        }
+      : cloneData(defaultTeacher);
   groups = Array.isArray(payload?.groups) ? cloneData(payload.groups) : cloneData(defaultGroups);
   students = Array.isArray(payload?.students)
     ? cloneData(payload.students)
@@ -324,6 +332,7 @@ function saveState() {
     DATA_FILE,
     JSON.stringify(
       {
+        teacher,
         groups,
         students,
         tests,
@@ -349,6 +358,7 @@ function loadState() {
   }
 
   hydrateState({
+    teacher: defaultTeacher,
     groups: defaultGroups,
     students: defaultStudents,
     tests: defaultTests,
@@ -371,6 +381,8 @@ async function initializeDataStore() {
 
     const remoteState = await loadPersistedState(getCurrentState());
     hydrateState(remoteState);
+    saveState();
+    await remoteSaveQueue;
     console.log("MongoDB Atlas ulandi");
   } catch (error) {
     console.error("MongoDB Atlas ulanmadi, local store ishlatiladi:", error.message);
